@@ -9,6 +9,16 @@ from langchain.prompts import PromptTemplate
 import google.generativeai as genai
 import streamlit as st
 
+from langchain_google_genai import GoogleGenerativeAI
+
+# In your function:
+try:
+    vector_store = FAISS.from_texts(texts, embedding=embeddings)
+except Exception as e:  # General exception handling
+    st.error(f"Error during embedding content: {str(e)}")
+    # Handle the error gracefully (e.g., log or fallback)
+
+
 # Retrieve the Google API key securely
 GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=GOOGLE_API_KEY)
