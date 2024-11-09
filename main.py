@@ -1,4 +1,3 @@
-from langchain_google_genai import GoogleGenerativeAIError
 import io
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -10,6 +9,9 @@ import google.generativeai as genai
 import streamlit as st
 
 from langchain_google_genai import GoogleGenerativeAI
+
+# Remove this import line if it causes issues
+# from langchain_google_genai import GoogleGenerativeAIError
 
 # In your function:
 try:
