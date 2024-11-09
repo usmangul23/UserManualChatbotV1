@@ -10,6 +10,23 @@ import streamlit as st
 
 from langchain_google_genai import GoogleGenerativeAI
 
+# Set background image with Streamlit
+def set_background():
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            background-image: url('https://www.istockphoto.com/vector/gear-draft-background-gm504745834-83309951');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        </style>
+        """, unsafe_allow_html=True
+    )
+
+
+
 # Remove this import line if it causes issues
 # from langchain_google_genai import GoogleGenerativeAIError
 
