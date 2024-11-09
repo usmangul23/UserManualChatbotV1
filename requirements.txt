@@ -1,8 +1,8 @@
-transformers 
-sentence-transformers 
-groq 
+transformers
+sentence-transformers
+groq
 vector-db-client
-qdrant-client 
+qdrant-client
 faiss-cpu
 google-generativeai
 python-dotenv
