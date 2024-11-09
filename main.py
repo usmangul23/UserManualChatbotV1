@@ -1,4 +1,5 @@
 import io
+import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
@@ -6,22 +7,8 @@ from langchain.vectorstores import FAISS
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 import google.generativeai as genai
-import streamlit as st
 
-from langchain_google_genai import GoogleGenerativeAI
-
-# Remove this import line if it causes issues
-# from langchain_google_genai import GoogleGenerativeAIError
-
-# In your function:
-try:
-    vector_store = FAISS.from_texts(texts, embedding=embeddings)
-except Exception as e:  # General exception handling
-    st.error(f"Error during embedding content: {str(e)}")
-    # Handle the error gracefully (e.g., log or fallback)
-
-
-# Retrieve the Google API key securely
+# Retrieve the Google API key securely from Streamlit secrets
 GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=GOOGLE_API_KEY)
 
@@ -33,7 +20,7 @@ def get_pdf_text(pdf_docs):
         pdf_reader = PdfReader(pdf_file)
         if pdf_reader.is_encrypted:
             try:
-                pdf_reader.decrypt("")
+                pdf_reader.decrypt("")  # Try to decrypt if encrypted
             except Exception as e:
                 st.error(f"Failed to decrypt PDF: {e}")
                 return []
@@ -53,17 +40,16 @@ def get_text_chunks(pages_text):
             chunks_with_pages.append({"text": chunk, "page_num": page["page_num"]})
     return chunks_with_pages
 
-# Step 3: Create or load a vector store with added error handling
+# Step 3: Create or load a vector store with error handling
 def load_or_create_vector_store(text_chunks):
     texts = [chunk["text"] for chunk in text_chunks]
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=GOOGLE_API_KEY)
     try:
         vector_store = FAISS.from_texts(texts, embedding=embeddings)
-    except GoogleGenerativeAIError as e:
-        print(f"Error during embedding: {e}")
-        raise
+    except Exception as e:  # General exception handling for vector store creation
+        st.error(f"Error during embedding or creating vector store: {str(e)}")
+        return None
     return vector_store
-
 
 # Step 4: Create the conversational chain
 def get_conversational_chain():
@@ -82,8 +68,9 @@ def get_conversational_chain():
 # Step 5: User input and generate detailed response with page numbers
 def user_input(user_question, chain, vector_store, text_chunks):
     docs = vector_store.similarity_search(user_question)  # Retrieve relevant chunks
-    # Identify the page number for each chunk found
     matching_chunks = []
+    
+    # Identify the page number for each chunk found
     for doc in docs:
         chunk_index = [i for i, chunk in enumerate(text_chunks) if chunk["text"] == doc.page_content]
         if chunk_index:
@@ -104,38 +91,36 @@ def user_input(user_question, chain, vector_store, text_chunks):
 
 # Main function for loading PDF, processing it, and answering questions
 def main():
-    # Upload PDF file in Colab
-    uploaded_file = files.upload()
-    pdf_docs = list(uploaded_file.values())  # Extract byte contents of each PDF
+    # Upload PDF file using Streamlit's file uploader
+    uploaded_file = st.file_uploader("Upload a PDF", type="pdf")
+    
+    if uploaded_file is not None:
+        # Process PDF text
+        pdf_docs = [uploaded_file]  # The uploaded file is in bytes format
+        pages_text = get_pdf_text(pdf_docs)
+        
+        if not pages_text:
+            st.error("No text extracted from the PDF. Please check the content.")
+            return
 
-    # Process PDF text
-    pages_text = get_pdf_text(pdf_docs)
-    if not pages_text:
-        print("No text extracted from the PDF. Please check the content.")
-        return
+        # Split text into chunks with page numbers
+        text_chunks = get_text_chunks(pages_text)
 
-    # Split text into chunks with page numbers
-    text_chunks = get_text_chunks(pages_text)
+        # Load or create vector store
+        vector_store = load_or_create_vector_store(text_chunks)
+        if vector_store is None:
+            return
 
-    # Load or create vector store
-    vector_store = load_or_create_vector_store(text_chunks)
+        # Initialize conversational chain
+        chain = get_conversational_chain()
 
-    # Initialize conversational chain
-    chain = get_conversational_chain()
-
-    # Input loop for user questions
-    print("You can now start asking questions about the PDF content:")
-    while True:
-        user_question = input("Enter your question (or type 'exit' to stop): ")
-        if user_question.lower() == 'exit':
-            break
-        elif not user_question:
-            print("Please enter a question.")
-            continue
-        else:
+        # Input loop for user questions
+        st.write("You can now start asking questions about the PDF content:")
+        user_question = st.text_input("Enter your question:")
+        if user_question:
             # Generate and display a detailed response with page numbers
             answer = user_input(user_question, chain, vector_store, text_chunks)
-            print(f"Detailed Answer: {answer}\n")
+            st.write(f"Detailed Answer: {answer}")
 
 # Run the main function
 if __name__ == "__main__":
