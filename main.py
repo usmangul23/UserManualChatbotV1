@@ -16,7 +16,7 @@ def set_background():
         """
         <style>
         .stApp {
-            background-image: url('C:\Users\HP\Downloads\industry.jpg');
+            background-image: url('https://www.alamy.com/industrial-factory-background-image210833018.html');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
