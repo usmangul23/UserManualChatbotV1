@@ -121,32 +121,42 @@ def user_input(user_question, chain, vector_store, text_chunks):
 
 # Main function for loading PDF, processing it, and answering questions
 def main():
-    st.title("PDF User Manual Chatbot")
+    # Set background image
+    set_background()
     
     # Upload PDF file
-    uploaded_file = st.file_uploader("Upload a PDF file", type="pdf")
-    if uploaded_file:
-        # Process PDF text
-        pages_text = get_pdf_text([uploaded_file])
-        if not pages_text:
-            st.error("No text extracted from the PDF. Please check the content.")
-            return
+    uploaded_file = files.upload()
+    pdf_docs = list(uploaded_file.values())  # Extract byte contents of each PDF
 
-        # Split text into chunks with page numbers
-        text_chunks = get_text_chunks(pages_text)
+    # Process PDF text
+    pages_text = get_pdf_text(pdf_docs)
+    if not pages_text:
+        print("No text extracted from the PDF. Please check the content.")
+        return
 
-        # Load or create vector store
-        vector_store = load_or_create_vector_store(text_chunks)
+    # Split text into chunks with page numbers
+    text_chunks = get_text_chunks(pages_text)
 
-        # Initialize conversational chain
-        chain = get_conversational_chain()
+    # Load or create vector store
+    vector_store = load_or_create_vector_store(text_chunks)
 
-        # Input loop for user questions
-        user_question = st.text_input("Enter your question about the PDF content:")
-        if user_question:
+    # Initialize conversational chain
+    chain = get_conversational_chain()
+
+    # Input loop for user questions
+    print("You can now start asking questions about the PDF content:")
+    while True:
+        user_question = input("Enter your question (or type 'exit' to stop): ")
+        if user_question.lower() == 'exit':
+            break
+        elif not user_question:
+            print("Please enter a question.")
+            continue
+        else:
             # Generate and display a detailed response with page numbers
             answer = user_input(user_question, chain, vector_store, text_chunks)
-            st.write(f"Detailed Answer: {answer}\n")
+            print(f"Detailed Answer: {answer}\n")
 
+# Run the main function
 if __name__ == "__main__":
     main()
