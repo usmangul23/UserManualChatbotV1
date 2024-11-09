@@ -121,10 +121,7 @@ def user_input(user_question, chain, vector_store, text_chunks):
 
 # Main function for loading PDF, processing it, and answering questions
 def main():
-    # Set background image
-    set_background()
-    
-    # Upload PDF file
+    # Upload PDF file in Colab
     uploaded_file = files.upload()
     pdf_docs = list(uploaded_file.values())  # Extract byte contents of each PDF
 
