@@ -1,7 +1,6 @@
 transformers
 sentence-transformers
 groq
-qdrant-client  # Alternative for vector database if applicable
 faiss-cpu
 google-generativeai
 python-dotenv
