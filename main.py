@@ -105,6 +105,7 @@ def main():
     # Initialize conversational chain
     chain = get_conversational_chain()
 
+    
     # Input loop for user questions
     print("You can now start asking questions about the PDF content:")
     while True:
