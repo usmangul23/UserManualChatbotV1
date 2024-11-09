@@ -6,23 +6,23 @@ from langchain.vectorstores import FAISS
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 import google.generativeai as genai
-from google.colab import files, userdata
+import streamlit as st
 
 # Retrieve the Google API key securely
-GOOGLE_API_KEY = userdata.get('GOOGLE_API_KEY')
+GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
 genai.configure(api_key=GOOGLE_API_KEY)
 
 # Step 1: Extract and decrypt PDF text, track page numbers
 def get_pdf_text(pdf_docs):
     pages_text = []
     for pdf_data in pdf_docs:
-        pdf_file = io.BytesIO(pdf_data)  # Convert bytes to file-like object
+        pdf_file = io.BytesIO(pdf_data.read())  # Convert bytes to file-like object
         pdf_reader = PdfReader(pdf_file)
         if pdf_reader.is_encrypted:
             try:
                 pdf_reader.decrypt("")
             except Exception as e:
-                print(f"Failed to decrypt PDF: {e}")
+                st.error(f"Failed to decrypt PDF: {e}")
                 return []
         for page_num, page in enumerate(pdf_reader.pages, start=1):
             page_text = page.extract_text()
@@ -86,40 +86,32 @@ def user_input(user_question, chain, vector_store, text_chunks):
 
 # Main function for loading PDF, processing it, and answering questions
 def main():
-    # Upload PDF file in Colab
-    uploaded_file = files.upload()
-    pdf_docs = list(uploaded_file.values())  # Extract byte contents of each PDF
-
-    # Process PDF text
-    pages_text = get_pdf_text(pdf_docs)
-    if not pages_text:
-        print("No text extracted from the PDF. Please check the content.")
-        return
-
-    # Split text into chunks with page numbers
-    text_chunks = get_text_chunks(pages_text)
-
-    # Load or create vector store
-    vector_store = load_or_create_vector_store(text_chunks)
-
-    # Initialize conversational chain
-    chain = get_conversational_chain()
-
+    st.title("PDF User Manual Chatbot")
     
-    # Input loop for user questions
-    print("You can now start asking questions about the PDF content:")
-    while True:
-        user_question = input("Enter your question (or type 'exit' to stop): ")
-        if user_question.lower() == 'exit':
-            break
-        elif not user_question:
-            print("Please enter a question.")
-            continue
-        else:
+    # Upload PDF file
+    uploaded_file = st.file_uploader("Upload a PDF file", type="pdf")
+    if uploaded_file:
+        # Process PDF text
+        pages_text = get_pdf_text([uploaded_file])
+        if not pages_text:
+            st.error("No text extracted from the PDF. Please check the content.")
+            return
+
+        # Split text into chunks with page numbers
+        text_chunks = get_text_chunks(pages_text)
+
+        # Load or create vector store
+        vector_store = load_or_create_vector_store(text_chunks)
+
+        # Initialize conversational chain
+        chain = get_conversational_chain()
+
+        # Input loop for user questions
+        user_question = st.text_input("Enter your question about the PDF content:")
+        if user_question:
             # Generate and display a detailed response with page numbers
             answer = user_input(user_question, chain, vector_store, text_chunks)
-            print(f"Detailed Answer: {answer}\n")
+            st.write(f"Detailed Answer: {answer}\n")
 
-# Run the main function
 if __name__ == "__main__":
     main()
