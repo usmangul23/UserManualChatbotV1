@@ -16,7 +16,7 @@ def set_background():
         """
         <style>
         .stApp {
-            background-image: url('https://www.istockphoto.com/vector/gear-draft-background-gm504745834-83309951');
+            background-image: url('C:\Users\HP\Downloads\industry.jpg');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
