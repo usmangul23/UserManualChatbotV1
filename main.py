@@ -40,12 +40,17 @@ def get_text_chunks(pages_text):
             chunks_with_pages.append({"text": chunk, "page_num": page["page_num"]})
     return chunks_with_pages
 
-# Step 3: Create or load a vector store
+# Step 3: Create or load a vector store with added error handling
 def load_or_create_vector_store(text_chunks):
     texts = [chunk["text"] for chunk in text_chunks]
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=GOOGLE_API_KEY)
-    vector_store = FAISS.from_texts(texts, embedding=embeddings)
+    try:
+        vector_store = FAISS.from_texts(texts, embedding=embeddings)
+    except GoogleGenerativeAIError as e:
+        print(f"Error during embedding: {e}")
+        raise
     return vector_store
+
 
 # Step 4: Create the conversational chain
 def get_conversational_chain():
