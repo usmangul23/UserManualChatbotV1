@@ -1,0 +1,13 @@
+transformers 
+sentence-transformers 
+groq 
+vector-db-client
+qdrant-client 
+faiss-cpu
+google-generativeai
+python-dotenv
+langchain
+langchain_google_genai
+langchain-community
+streamlit
+pypdf2
