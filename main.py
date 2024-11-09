@@ -91,6 +91,9 @@ def user_input(user_question, chain, vector_store, text_chunks):
 
 # Main function for loading PDF, processing it, and answering questions
 def main():
+    # Display the title of the app
+    st.title("User Manual ChatBot")
+
     # Upload PDF file using Streamlit's file uploader
     uploaded_file = st.file_uploader("Upload a PDF", type="pdf")
     
@@ -117,10 +120,11 @@ def main():
         # Input loop for user questions
         st.write("You can now start asking questions about the PDF content:")
         user_question = st.text_input("Enter your question:")
+        
         if user_question:
             # Generate and display a detailed response with page numbers
             answer = user_input(user_question, chain, vector_store, text_chunks)
-            st.write(f"Detailed Answer: {answer}")
+            st.text_area("Detailed Answer", value=answer, height=300)
 
 # Run the main function
 if __name__ == "__main__":
