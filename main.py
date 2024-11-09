@@ -1,3 +1,4 @@
+from langchain_google_genai import GoogleGenerativeAIError
 import io
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
