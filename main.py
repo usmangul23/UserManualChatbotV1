@@ -8,7 +8,6 @@ from langchain.vectorstores import FAISS
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 import google.generativeai as genai
-from google.api_core.exceptions import ResourceExhausted  # Import for rate limit handling
 
 # Retrieve the Google API key securely from Streamlit secrets
 GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
@@ -46,18 +45,22 @@ def get_text_chunks(pages_text):
 def load_or_create_vector_store(text_chunks):
     texts = [chunk["text"] for chunk in text_chunks]
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=GOOGLE_API_KEY)
-
+    
     retry_attempts = 5  # Define max retry attempts in case of rate limit errors
+    batch_size = 10  # Number of texts to embed per batch
+
     for attempt in range(retry_attempts):
         try:
-            vector_store = FAISS.from_texts(texts, embedding=embeddings)
+            vector_store = FAISS.from_texts(texts, embedding=embeddings, batch_size=batch_size)
+            time.sleep(0.5)  # Short delay to avoid exceeding the rate limit
             return vector_store
-        except ResourceExhausted:
-            st.warning(f"Rate limit exceeded. Waiting for 60 seconds before retrying... (Attempt {attempt + 1}/{retry_attempts})")
-            time.sleep(60)  # Wait for 60 seconds and retry
-        except Exception as e:  # Handle other embedding errors
-            st.error(f"Error during embedding or creating vector store: {str(e)}")
-            return None
+        except Exception as e:
+            if "quota" in str(e).lower() and "rate limit" in str(e).lower():
+                st.warning(f"Rate limit exceeded. Waiting for 60 seconds before retrying... (Attempt {attempt + 1}/{retry_attempts})")
+                time.sleep(60)  # Wait for 60 seconds and retry
+            else:
+                st.error(f"Error during embedding or creating vector store: {str(e)}")
+                return None
     st.error("Failed to create vector store after multiple attempts.")
     return None
 
