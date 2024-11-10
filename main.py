@@ -8,7 +8,6 @@ from langchain.vectorstores import FAISS
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 import google.generativeai as genai
-from google.api_core.exceptions import ResourceExhausted  # Import for rate limit handling
 
 # Retrieve the Google API key securely from Streamlit secrets
 GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
@@ -42,22 +41,36 @@ def get_text_chunks(pages_text):
             chunks_with_pages.append({"text": chunk, "page_num": page["page_num"]})
     return chunks_with_pages
 
-# Step 3: Create or load a vector store with error and rate limit handling
+# Step 3: Create or load a vector store with error handling and granular rate limiting
 def load_or_create_vector_store(text_chunks):
     texts = [chunk["text"] for chunk in text_chunks]
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=GOOGLE_API_KEY)
+    
+    retry_attempts = 5  # Maximum number of retries
+    batch_size = 5  # Smaller batch size to reduce rate of API requests
+    delay_between_batches = 5  # 5-second delay between batches
+    vector_store = None
 
-    retry_attempts = 5  # Define max retry attempts in case of rate limit errors
     for attempt in range(retry_attempts):
         try:
-            vector_store = FAISS.from_texts(texts, embedding=embeddings)
+            # Create vector store by embedding texts in smaller batches with delays
+            embedded_texts = []
+            for i in range(0, len(texts), batch_size):
+                batch_texts = texts[i:i + batch_size]
+                embedded_texts.extend(GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=GOOGLE_API_KEY).embed_texts(batch_texts))
+                time.sleep(delay_between_batches)
+                
+            # Store all embeddings in FAISS vector store
+            vector_store = FAISS.from_texts(embedded_texts, embedding=embeddings)
             return vector_store
-        except ResourceExhausted:
-            st.warning(f"Rate limit exceeded. Waiting for 60 seconds before retrying... (Attempt {attempt + 1}/{retry_attempts})")
-            time.sleep(60)  # Wait for 60 seconds and retry
-        except Exception as e:  # Handle other embedding errors
-            st.error(f"Error during embedding or creating vector store: {str(e)}")
-            return None
+
+        except Exception as e:
+            if "quota" in str(e).lower() and "rate limit" in str(e).lower():
+                st.warning(f"Rate limit exceeded. Waiting for 60 seconds before retrying... (Attempt {attempt + 1}/{retry_attempts})")
+                time.sleep(60)  # Wait for 60 seconds and retry
+            else:
+                st.error(f"Error during embedding or creating vector store: {str(e)}")
+                return None
     st.error("Failed to create vector store after multiple attempts.")
     return None
 
