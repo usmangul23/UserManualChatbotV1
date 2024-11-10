@@ -1,4 +1,5 @@
 import io
+import time
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -7,6 +8,7 @@ from langchain.vectorstores import FAISS
 from langchain.chains.question_answering import load_qa_chain
 from langchain.prompts import PromptTemplate
 import google.generativeai as genai
+from google.api_core.exceptions import ResourceExhausted  # Import for rate limit handling
 
 # Retrieve the Google API key securely from Streamlit secrets
 GOOGLE_API_KEY = st.secrets["GOOGLE_API_KEY"]
@@ -40,16 +42,24 @@ def get_text_chunks(pages_text):
             chunks_with_pages.append({"text": chunk, "page_num": page["page_num"]})
     return chunks_with_pages
 
-# Step 3: Create or load a vector store with error handling
+# Step 3: Create or load a vector store with error and rate limit handling
 def load_or_create_vector_store(text_chunks):
     texts = [chunk["text"] for chunk in text_chunks]
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=GOOGLE_API_KEY)
-    try:
-        vector_store = FAISS.from_texts(texts, embedding=embeddings)
-    except Exception as e:  # General exception handling for vector store creation
-        st.error(f"Error during embedding or creating vector store: {str(e)}")
-        return None
-    return vector_store
+
+    retry_attempts = 5  # Define max retry attempts in case of rate limit errors
+    for attempt in range(retry_attempts):
+        try:
+            vector_store = FAISS.from_texts(texts, embedding=embeddings)
+            return vector_store
+        except ResourceExhausted:
+            st.warning(f"Rate limit exceeded. Waiting for 60 seconds before retrying... (Attempt {attempt + 1}/{retry_attempts})")
+            time.sleep(60)  # Wait for 60 seconds and retry
+        except Exception as e:  # Handle other embedding errors
+            st.error(f"Error during embedding or creating vector store: {str(e)}")
+            return None
+    st.error("Failed to create vector store after multiple attempts.")
+    return None
 
 # Step 4: Create the conversational chain
 def get_conversational_chain():
